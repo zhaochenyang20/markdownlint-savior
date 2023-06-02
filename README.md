@@ -4,7 +4,7 @@ markdownlint-savior is a Python script designed to assist in resolving common Ma
 
 ## Usage
 
-1. Prepare Input: Create a Markdown file or copy your Markdown text into a file named `input.md`.
+1. Prepare Input: Markdown text into `main.py`.
 
 2. Run the Script: Execute the script by running the following command:
 
