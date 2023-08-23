@@ -2,39 +2,48 @@ import re
 
 
 input_text = """
-# DatasetProcessor Usage
+# DatasetRetriever
 
-## BaseProcessor
+## Overview
 
-The `BaseProcessor` is a base class for dataset processors. It provides a common interface and defines the necessary methods for post-processing datasets.
+- `DatasetRetriever`: Interface for retrieving datasets based on a prompt.
+- `DescriptionDatasetRetriever`: Retrieves HuggingFace datasets using similarity to a given prompt.
 
-To create a dataset processor using the `BaseProcessor`, you need to implement the following method:
+## Getting Started
 
-- `post_process_example()`: Modifies the input column of a given example dictionary based on the task-specific requirements.
-
-The `BaseProcessor` class can be subclassed to implement custom dataset processing logic based on different task requirements or data formats.
-
-To see an example of how to use `BaseProcessor` and its subclasses, you can refer to the unit tests in the [dataset_processor_test.py](../../tests/dataset_processor_test.py) file.
-
-## TextualizeProcessor
-
-The `TextualizeProcessor` is a dataset processor that converts datasets into a Text2Text fashion. It modifies the input column of each example in the dataset to include task-specific instructions and prefixes.
-
-## Usage
-
-1. Import the necessary modules:
+- Import Modules
 
 ```python
-from prompt2model.dataset_processor.textualize import TextualizeProcessor
+from prompt2model.dataset_retriever import DescriptionDatasetRetriever
+from prompt2model.prompt_parser import MockPromptSpec, TaskType
 ```
 
-2. Initialize an instance of the `TextualizeProcessor`:
+- Initialize Retriever
 
 ```python
-processor = TextualizeProcessor(has_encoder=<True / False>)
+retriever = DescriptionDatasetRetriever()
 ```
 
-The `has_encoder` parameter indicates whether the retrieved model has an encoder. For encoder-decoder models like T5, set `has_encoder=True`. For decoder-only models like GPT, set `has_encoder=False`.
+Various parameters like search index path, model name, and search depth can be customized during initialization.
+
+- Prepare the Prompt
+
+```python
+task_type = TaskType.TEXT_GENERATION
+prompt_text = "..."
+prompt_spec = MockPromptSpec(task_type)
+prompt_spec._instruction = prompt_text
+```
+
+- Retrieve Dataset
+
+```python
+dataset_dict = retriever.retrieve_dataset_dict(
+    prompt_spec, blocklist=[]
+)
+```
+
+`dataset_dict` will contain the dataset splits (train/val/test) most relevant to the given prompt.
 
 """
 
@@ -51,9 +60,29 @@ def split_into_lines(text):
             # Replace ordered list numbers with dashes
             paragraph = re.sub(r'^\d+\.', '-', paragraph, flags=re.MULTILINE)
 
+            # Handle lines starting with '-'
+            if paragraph.startswith('-'):
+                sublines = paragraph.split('\n')
+                for subline in sublines:
+                    words = subline.split()
+                    for word in words:
+                        # Check if line length exceeds the limit
+                        if len(current_line) + len(word) <= 70:
+                            current_line += word + ' '
+                        else:
+                            lines.append(current_line.strip())
+                            current_line = word + ' '
+
+                    if current_line:
+                        lines.append(current_line.strip())
+                        current_line = ''
+
+                lines.append('')  # Add a blank line after preserved lines
+                continue
+
             words = paragraph.split()
             for word in words:
-                if len(current_line) + len(word) <= 80:
+                if len(current_line) + len(word) <= 70:
                     current_line += word + ' '
                 else:
                     lines.append(current_line.strip())
@@ -71,8 +100,6 @@ def split_into_lines(text):
 def main():
     # User input
     result = split_into_lines(input_text)
-
-    print("Result:")
     for line in result:
         print(line)
 
